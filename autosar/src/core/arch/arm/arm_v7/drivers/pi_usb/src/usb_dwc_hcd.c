@@ -16,7 +16,7 @@
 #include "usb_hub_defs.h"
 #include "usb_std_defs.h"
 #include "usb_subsystem.h"
-#include "bcm2835.h"
+#include "bcm283x.h"
 #include "isr.h"
 #include "irq_types.h"
 #include "Os.h"
@@ -1567,6 +1567,7 @@ static void USB_Isr(void)
 	union dwc_core_interrupts interrupts = regs->core_interrupts;
 	bcm2835_Sleep(1000);
 
+	pi_printf("USB_Isr");
 #if START_SPLIT_INTR_TRANSFERS_ON_SOF
     if (interrupts.sof_intr)
     {

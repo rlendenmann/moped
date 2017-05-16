@@ -7,9 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "led.h"
-#include "bcm2835_Types.h"
 #include "Std_Types.h"
-#include "bcm2835.h"
+#include "bcm283x.h"
 #include "Uart.h"
 #include "isr.h"
 #include "irq_types.h"
@@ -119,7 +118,7 @@ void Uart_Init(void) {
   AUX_MU_MCR_REG  = 0x00;
   AUX_MU_IER_REG  = 0x05;
   AUX_MU_IIR_REG  = 0xC6;
-  AUX_MU_BAUD_REG = ((BCM2835_CLOCK_FREQ / (8 * (115200))) - 1);
+  AUX_MU_BAUD_REG = ((BCM283X_CLOCK_FREQ / (8 * (115200))) - 1);
 
   bcm2835_GpioFnSel(14, GPFN_ALT5);
   bcm2835_GpioFnSel(15, GPFN_ALT5);

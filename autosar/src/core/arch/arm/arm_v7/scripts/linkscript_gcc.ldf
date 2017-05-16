@@ -1,33 +1,25 @@
 /*
- * Linker Script for the raspberry Pi!
+ * Linker Script for the raspberry Pi 2 & 3!
  */
 OUTPUT_FORMAT("elf32-littlearm", "elf32-bigarm","elf32-littlearm")
 OUTPUT_ARCH(arm)
 ENTRY(_start)
 
-__und_stack_size__	= 0x0004;
-__abt_stack_size__	= 0x0004;
-__fiq_stack_size__	= 0x0010;
-__irq_stack_size__	= 0x2000;
-__svc_stack_size__	= 0x0004;
-__sys_stack_size__	= 0xA000;
-__stacks_total_size__	= __und_stack_size__ + __abt_stack_size__ + __fiq_stack_size__ + __irq_stack_size__ + __svc_stack_size__ + __sys_stack_size__;
-
 MEMORY
 {
-    ram : org = 0x8000, len = 0x1F400000-0x20
+    RAM : ORIGIN = 0x00000000, LENGTH = 0x1F400000-0x20
 }
 
-__ram_start__		= ORIGIN(ram);
-__ram_size__		= LENGTH(ram);
+__ram_start__		= ORIGIN(RAM);
+__ram_size__		= LENGTH(RAM);
 __ram_end__		= __ram_start__ + __ram_size__;
 
 SECTIONS
 {
-	. = 0x8000;
+    . = 0x0000000;
 
-	.text : ALIGN(16) SUBALIGN(16)
-	{
+    .text : ALIGN(16) SUBALIGN(16)
+    {
         _text = .;
         KEEP(*(.init))
         *(.text)
@@ -39,12 +31,12 @@ SECTIONS
         *(.gcc*)
         *(.ctors)
         *(.dtors)
-    } > ram
+    } > RAM
 
     .ARM.extab : {*(.ARM.extab* .gnu.linkonce.armextab.*)}
 
     __exidx_start = .;
-    .ARM.exidx : {*(.ARM.exidx* .gnu.linkonce.armexidx.*)} > ram
+    .ARM.exidx : {*(.ARM.exidx* .gnu.linkonce.armexidx.*)} > RAM
     __exidx_end = .;
 
     .eh_frame_hdr : {*(.eh_frame_hdr)}
@@ -65,10 +57,11 @@ SECTIONS
         *(.ramtext)
         . = ALIGN(4);
         _edata = .;
-    } > ram 
+    } > RAM 
 
     .bss :
     {
+        . = ALIGN(4);
         _bss_start = .;
         *(.bss)
         . = ALIGN(4);
@@ -77,50 +70,69 @@ SECTIONS
         *(COMMON)
         . = ALIGN(4);
         _bss_end = .;
-    } > ram    
+    } > RAM
     
-    .uninit ALIGN(0x10) (NOLOAD) : { *(.winidea_port .ramlog .dem_eventmemory_pri) ; } 			> ram
-	 /* Stabs debugging sections.  */
-	.stab          0 : { *(.stab) }
-	.stabstr       0 : { *(.stabstr) }
-	.stab.excl     0 : { *(.stab.excl) }
-	.stab.exclstr  0 : { *(.stab.exclstr) }
-	.stab.index    0 : { *(.stab.index) }
-	.stab.indexstr 0 : { *(.stab.indexstr) }
-	.comment       0 : { *(.comment) }
-	/* DWARF debug sections.
-		Symbols in the DWARF debugging sections are relative to the beginning
-		of the section so we begin them at 0.  */
-	/* DWARF 1 */
-	.debug          0 : { *(.debug) }
-	.line           0 : { *(.line) }
-	/* GNU DWARF 1 extensions */
-	.debug_srcinfo  0 : { *(.debug_srcinfo) }
-	.debug_sfnames  0 : { *(.debug_sfnames) }
-	/* DWARF 1.1 and DWARF 2 */
-	.debug_aranges  0 : { *(.debug_aranges) }
-	.debug_pubnames 0 : { *(.debug_pubnames) }
-	/* DWARF 2 */
-	.debug_info     0 : { *(.debug_info .gnu.linkonce.wi.*) }
-	.debug_abbrev   0 : { *(.debug_abbrev) }
-	.debug_line     0 : { *(.debug_line) }
-	.debug_frame    0 : { *(.debug_frame) }
-	.debug_str      0 : { *(.debug_str) }
-	.debug_loc      0 : { *(.debug_loc) }
-	.debug_macinfo  0 : { *(.debug_macinfo) }
-	/* SGI/MIPS DWARF 2 extensions */
-	.debug_weaknames 0 : { *(.debug_weaknames) }
-	.debug_funcnames 0 : { *(.debug_funcnames) }
-	.debug_typenames 0 : { *(.debug_typenames) }
-	.debug_varnames  0 : { *(.debug_varnames) }
+    .uninit ALIGN(0x10) (NOLOAD) :
+    {
+        *(.winidea_port .ramlog .dem_eventmemory_pri) ; 
+    } > RAM
+     /* Stabs debugging sections.  */
+    .stab          0 : { *(.stab) }
+    .stabstr       0 : { *(.stabstr) }
+    .stab.excl     0 : { *(.stab.excl) }
+    .stab.exclstr  0 : { *(.stab.exclstr) }
+    .stab.index    0 : { *(.stab.index) }
+    .stab.indexstr 0 : { *(.stab.indexstr) }
+    .comment       0 : { *(.comment) }
+    /* DWARF debug sections.
+    	Symbols in the DWARF debugging sections are relative to the beginning
+    	of the section so we begin them at 0.  */
+    /* DWARF 1 */
+    .debug          0 : { *(.debug) }
+    .line           0 : { *(.line) }
+    /* GNU DWARF 1 extensions */
+    .debug_srcinfo  0 : { *(.debug_srcinfo) }
+    .debug_sfnames  0 : { *(.debug_sfnames) }
+    /* DWARF 1.1 and DWARF 2 */
+    .debug_aranges  0 : { *(.debug_aranges) }
+    .debug_pubnames 0 : { *(.debug_pubnames) }
+    /* DWARF 2 */
+    .debug_info     0 : { *(.debug_info .gnu.linkonce.wi.*) }
+    .debug_abbrev   0 : { *(.debug_abbrev) }
+    .debug_line     0 : { *(.debug_line) }
+    .debug_frame    0 : { *(.debug_frame) }
+    .debug_str      0 : { *(.debug_str) }
+    .debug_loc      0 : { *(.debug_loc) }
+    .debug_macinfo  0 : { *(.debug_macinfo) }
+    /* SGI/MIPS DWARF 2 extensions */
+    .debug_weaknames 0 : { *(.debug_weaknames) }
+    .debug_funcnames 0 : { *(.debug_funcnames) }
+    .debug_typenames 0 : { *(.debug_typenames) }
+    .debug_varnames  0 : { *(.debug_varnames) }
+
+    .heap ALIGN(0x10) (COPY) :
+    {
+        _end = .;
+        __end = _end;
+        PROVIDE(end = .);
+        . = ALIGN(4);
+        __heap_base__ = .;
+        KEEP(*(.heap*))
+        __heap_end__ = .;
+    } > RAM
+
+    .stack_dummy ALIGN(0x10) (COPY) :
+    {
+        KEEP(*(.stack*))
+    } > RAM
+
+    __stack_top = ORIGIN(RAM) + LENGTH(RAM) - 4;
+    __stack_end = __stack_top - SIZEOF(.stack_dummy);
+    PROVIDE(__stack = __stack_top);
 }
 
-PROVIDE(end = .);
-_end = .;
-
-__heap_base__              = _end;
-__heap_end__               = __ram_end__ - __stacks_total_size__;
-__main_thread_stack_base__ = __ram_end__ - __stacks_total_size__;
-
+__main_thread_stack_base__ = __heap_base__;
+/*
 __EXCEPT_START__	= 0x0;
 __EXCEPT_END__		= 0x0;
+*/

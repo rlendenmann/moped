@@ -18,7 +18,7 @@ OsTickType OsTickFreq = 1000;
 
 
 // ###############################    DEBUG OUTPUT     #############################
-uint32 os_dbg_mask =  0;                     
+uint32 os_dbg_mask = 0;
 
 
 // ###############################    APPLICATIONS     #############################
@@ -33,8 +33,17 @@ GEN_APPLICATION_HEAD = {
 				/* ShutdownHook */ NULL,
 				/* ErrorHook    */ NULL,
 				/* rstrtTaskId  */ 0 // NOT CONFIGURABLE IN TOOLS (OsTasks.indexOf(app.Os RestartTask.value))
+				),
+	GEN_APPLICATION(
+				/* id           */ APPLICATION_ID_OsAppl1,
+				/* name         */ "OsApplication1",
+				/* trusted      */ TRUE, /* NOT CONFIGURABLE IN TOOLS */
+				/* core         */ 1,
+				/* StartupHook  */ NULL,
+				/* ShutdownHook */ NULL,
+				/* ErrorHook    */ NULL,
+				/* rstrtTaskId  */ 0 // NOT CONFIGURABLE IN TOOLS (OsTasks.indexOf(app.Os RestartTask.value))
 				)
-
 };
 
 // #################################    COUNTERS     ###############################
@@ -157,7 +166,7 @@ GEN_ALARM_HEAD = {
 // ##############################    STACKS (TASKS)     ############################
 
 DECLARE_STACK(OsIdle, OS_OSIDLE_STACK_SIZE);
-
+DECLARE_STACK(OsIdle_1, OS_OSIDLE_STACK_SIZE);
 
 DECLARE_STACK(ActuatorTask,  2048);
 DECLARE_STACK(CanFunctionTask,  2048);
@@ -170,23 +179,34 @@ DECLARE_STACK(StartupTask,  2048);
 // ##################################    TASKS     #################################
 GEN_TASK_HEAD = {
 	
-	GEN_BTASK(	/* 	        		*/ OsIdle,
-				/* name        		*/ "OsIdle",
-				/* priority    		*/ 0,
-				/* schedule    		*/ FULL,
-				/* autostart   		*/ TRUE,
-				/* resource_int_p   */ NULL,
-				/* resource mask	*/ 0,
-				/* activation lim. 	*/ 1,
-				/* App owner    	*/ OS_CORE_0_MAIN_APPLICATION,
-				/* Accessing apps   */ (1 << OS_CORE_0_MAIN_APPLICATION)
+	GEN_BTASK(
+		/* 			*/ OsIdle,
+		/* name        		*/ "OsIdle",
+		/* priority    		*/ 0,
+		/* schedule    		*/ FULL,
+		/* autostart   		*/ TRUE,
+		/* resource_int_p   */ NULL,
+		/* resource mask	*/ 0,
+		/* activation lim. 	*/ 1,
+		/* App owner    	*/ OS_CORE_0_MAIN_APPLICATION,
+		/* Accessing apps   */ (1 << OS_CORE_0_MAIN_APPLICATION)
 	),
-	
 
-
+	GEN_BTASK(
+		/* 	        	*/ OsIdle_1,
+		/* name        		*/ "OsIdle_1",
+		/* priority    		*/ 0,
+		/* schedule    		*/ FULL,
+		/* autostart   		*/ TRUE,
+		/* resource_int_p   */ NULL,
+		/* resource mask	*/ 0,
+		/* activation lim. 	*/ 1,
+		/* App owner    	*/ APPLICATION_ID_OsAppl1,
+		/* Accessing apps   */ (1 << (APPLICATION_ID_OsAppl1 | OS_CORE_0_MAIN_APPLICATION))
+	),
 
 	GEN_ETASK(
-		/* 	        		*/ ActuatorTask,
+		/* 	        	*/ ActuatorTask,
 		/* name        		*/ "ActuatorTask",
 		/* priority    		*/ 6,
 		/* schedule    		*/ FULL,
@@ -200,7 +220,7 @@ GEN_TASK_HEAD = {
 
 
 	GEN_ETASK(
-		/* 	        		*/ CanFunctionTask,
+		/* 	        	*/ CanFunctionTask,
 		/* name        		*/ "CanFunctionTask",
 		/* priority    		*/ 7,
 		/* schedule    		*/ FULL,
@@ -214,7 +234,7 @@ GEN_TASK_HEAD = {
 
 
 	GEN_ETASK(
-		/* 	        		*/ RteTask,
+		/* 	        	*/ RteTask,
 		/* name        		*/ "RteTask",
 		/* priority    		*/ 4,
 		/* schedule    		*/ FULL,
@@ -224,11 +244,11 @@ GEN_TASK_HEAD = {
 		/* event mask */       0 | EVENT_MASK_RteFunctionEvent | EVENT_MASK_AdcEvent | EVENT_MASK_FrontWheelEvent | EVENT_MASK_RearWheelEvent | EVENT_MASK_pluginInstallationEvent | EVENT_MASK_pluginCommunicationSCUEvent | EVENT_MASK_pluginCommunicationTCUEvent | EVENT_MASK_positionDataEvent | EVENT_MASK_SpeedSteerEvent ,
 		/* App owner    	*/ APPLICATION_ID_OsApplication,
 		/* Accessing apps   */ (1 <<APPLICATION_ID_OsApplication)
-	),			
+	),
 
 
 	GEN_ETASK(
-		/* 	        		*/ SensorTask,
+		/* 	        	*/ SensorTask,
 		/* name        		*/ "SensorTask",
 		/* priority    		*/ 3,
 		/* schedule    		*/ FULL,
@@ -238,25 +258,25 @@ GEN_TASK_HEAD = {
 		/* event mask */       0 | EVENT_MASK_SensorEvent ,
 		/* App owner    	*/ APPLICATION_ID_OsApplication,
 		/* Accessing apps   */ (1 <<APPLICATION_ID_OsApplication)
-	),			
+	),
 
 
 	GEN_ETASK(
-		/* 	        		*/ SquawkTask,
+		/* 	        	*/ SquawkTask,
 		/* name        		*/ "SquawkTask",
 		/* priority    		*/ 2,
 		/* schedule    		*/ FULL,
-		/* autostart   		*/ TRUE,
+		/* autostart   		*/ FALSE,
 		/* resource_int_p   */ NULL,
 		/* resource mask	*/ 0 ,
 		/* event mask */       0 | EVENT_MASK_SquawkEvent ,
 		/* App owner    	*/ APPLICATION_ID_OsApplication,
 		/* Accessing apps   */ (1 <<APPLICATION_ID_OsApplication)
-	),			
+	),
 
 
 	GEN_BTASK(
-		/* 	        		*/ StartupTask,
+		/* 	        	*/ StartupTask,
 		/* name        		*/ "StartupTask",
 		/* priority    		*/ 8,
 		/* schedule    		*/ FULL,
@@ -267,7 +287,7 @@ GEN_TASK_HEAD = {
 		/* activation lim. 	*/ 1,
 		/* App owner    	*/ APPLICATION_ID_OsApplication,
 		/* Accessing apps   */ (1 <<APPLICATION_ID_OsApplication)
-	),			
+	),
 
 };
 
@@ -292,8 +312,20 @@ GEN_ISR_MAP = {
 // ############################    SCHEDULE TABLES     #############################
 
 
- 
- // ############################    SPINLOCKS     ##################################
 
-
+// ############################    SPINLOCKS     ##################################
+GEN_SPINLOCK_HEAD = {
+	GEN_SPINLOCK(
+		OS_SPINLOCK,
+		"OS",
+		0,
+		(1 << (APPLICATION_ID_OsApplication | APPLICATION_ID_OsAppl1))
+	),
+	GEN_SPINLOCK(
+		OS_RTE_SPINLOCK,
+		"OS_RTE",
+		0,
+		(1 << (APPLICATION_ID_OsApplication | APPLICATION_ID_OsAppl1))
+	),
+};
 

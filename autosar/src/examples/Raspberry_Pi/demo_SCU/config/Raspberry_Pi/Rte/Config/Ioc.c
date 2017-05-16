@@ -3,6 +3,8 @@
 
 IocBuffersType IocBuffers;
 
-void IocInit(void) {
-
+void IocInit(void)
+{
+	/* TODO: setup ioc buffers, this function is only called on master
+	   core */
 }

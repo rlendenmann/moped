@@ -77,6 +77,8 @@
 /* @req EcuM2862 */
 /* @req EcuM2810 */
 
+#define USE_LDEBUG_PRINTF 1
+
 #include "Std_Types.h"
 #include "EcuM.h"
 #include "Modules.h"
@@ -107,7 +109,6 @@
 #include "SchM.h"
 #endif
 
-//#define USE_LDEBUG_PRINTF
 #include "debug.h"
 
 /* ----------------------------[private define]------------------------------*/
@@ -202,7 +203,8 @@ static boolean ValidatePostBuildConfiguration(const EcuM_ConfigType* config) {
 /**
  * Initialize EcuM.
  */
-void EcuM_Init(void) {
+void EcuM_Init(void)
+{
 	if (GetCoreID() == OS_CORE_ID_MASTER) {
 		Std_ReturnType status;
 #if defined(USE_ECUM_FIXED) || defined(USE_ECUM)
@@ -219,90 +221,105 @@ void EcuM_Init(void) {
 		Os_IsrInit();
 
 		// Determine PostBuild configuration
-	EcuM_World.config = EcuM_DeterminePbConfiguration();
+		EcuM_World.config = EcuM_DeterminePbConfiguration();
 
+		LDEBUG_PRINTF("%s():PbConf\n", __func__);
 
 #if defined(CFG_POSTBUILD)
-    /* @req EcuM2796 @req EcuM2798 */
-    if (!ValidatePostBuildConfiguration(EcuM_World.config)) {
+		/* @req EcuM2796 @req EcuM2798 */
+		if (!ValidatePostBuildConfiguration(EcuM_World.config)) {
 #if defined(USE_DEM)
-        EcuM_ErrorHook(EcuM_World.config->EcuMDemInconsistencyEventId);
+			EcuM_ErrorHook(EcuM_World.config->EcuMDemInconsistencyEventId);
 #endif
-        return;
-    }
+			return;
+		}
 #endif
 
 
 		// Initialize drivers needed before the OS-starts
-	EcuM_AL_DriverInitOne(EcuM_World.config);
+		EcuM_AL_DriverInitOne(EcuM_World.config);
 
-    // Determine the reset/wakeup reason
-	switch (Mcu_GetResetReason()) {
-	case MCU_POWER_ON_RESET:
-		EcuM_SetWakeupEvent(ECUM_WKSOURCE_POWER);
-		break;
-	case MCU_SW_RESET:
-		EcuM_SetWakeupEvent(ECUM_WKSOURCE_RESET);
-		break;
-	case MCU_RESET_UNDEFINED:
-		break;
-	case MCU_WATCHDOG_RESET:
-		EcuM_SetWakeupEvent(ECUM_WKSOURCE_INTERNAL_WDG);
-		break;
-	default:
-		assert(0);
-		break;
-	}
-
-    // Moved this here because EcuM_SelectShutdownTarget needs us to be initilized.
-	EcuM_World.initiated = TRUE;
-
-    // Set default shutdown target
-
-    /* @req EcuM2181 */
-	status = EcuM_SelectShutdownTarget(
-					EcuM_World.config->EcuMDefaultShutdownTarget,
-					EcuM_World.config->EcuMDefaultSleepMode);/** @req EcuM2181 */
-	if (status != E_OK) {
-	    return;
+		// Determine the reset/wakeup reason
+		switch (Mcu_GetResetReason()) {
+		case MCU_POWER_ON_RESET:
+			EcuM_SetWakeupEvent(ECUM_WKSOURCE_POWER);
+			break;
+		case MCU_SW_RESET:
+			EcuM_SetWakeupEvent(ECUM_WKSOURCE_RESET);
+			break;
+		case MCU_RESET_UNDEFINED:
+			break;
+		case MCU_WATCHDOG_RESET:
+			EcuM_SetWakeupEvent(ECUM_WKSOURCE_INTERNAL_WDG);
+			break;
+		default:
+			assert(0);
+			break;
 		}
 
-	// Set default application mode
-	status = EcuM_SelectApplicationMode( EcuM_World.config->EcuMDefaultAppMode);
-	if (status != E_OK) {
-		return;
-	}
+		LDEBUG_PRINTF("%s():GetReason\n", __func__);
+
+		// Moved this here because EcuM_SelectShutdownTarget needs us to be initilized.
+		EcuM_World.initiated = TRUE;
+
+		// Set default shutdown target
+
+		/* @req EcuM2181 */
+		status = EcuM_SelectShutdownTarget(
+						EcuM_World.config->EcuMDefaultShutdownTarget,
+						EcuM_World.config->EcuMDefaultSleepMode);/** @req EcuM2181 */
+		if (status != E_OK) {
+			return;
+		}
+
+		// Set default application mode
+		status = EcuM_SelectApplicationMode( EcuM_World.config->EcuMDefaultAppMode);
+		if (status != E_OK) {
+			return;
+		}
 
 #if defined(USE_COMM) && (ECUM_AR_VERSION < 40000)
-	EcuM_World.run_comm_requests = 0;
+		EcuM_World.run_comm_requests = 0;
 #endif
-	EcuM_World.run_requests = 0;
-	EcuM_World.postrun_requests = 0;
+		EcuM_World.run_requests = 0;
+		EcuM_World.postrun_requests = 0;
 
-#if (ECUM_RESET_LOOP_DETECTION == STD_ON)
-	//TODO: This returns true if a loop is detected. The spec does not say
-	//      what to do if that happens.
-	EcuM_LoopDetection();
-#endif
+//#if (ECUM_RESET_LOOP_DETECTION == STD_ON)
+		//TODO: This returns true if a loop is detected. The spec does not say
+		//      what to do if that happens.
+		if (EcuM_LoopDetection()) {
+			LDEBUG_PRINTF("Loop detected!");
+		}
+//#endif
 
-    // Start this baby up
-    /* @req EcuMf0010 */
-    /* @req EcuM2603 */
-    /* @req EcuM2243 */
+		// Start this baby up
+		/* @req EcuMf0010 */
+		/* @req EcuM2603 */
+		/* @req EcuM2243 */
 		StatusType coreStatus;
 		if (OS_NUM_CORES > 1) {
+			extern unsigned int core_dbg[4];
+			LDEBUG_PRINTF("%s():StartCore(1):core1_dbg=x%0x core1_dbg=x%0x core2_dbg=x%0x core3_dbg=x%0x\n",
+				      __func__, core_dbg[0], core_dbg[1], core_dbg[2], core_dbg[3]);
 			StartCore(GetCoreID() + 1, &coreStatus);
+			LDEBUG_PRINTF("%s():StartCore(1):coreSatus=%d\n",
+				      __func__, coreStatus);
 		}
-   StartOS(EcuM_World.config->EcuMDefaultAppMode); /** @req EcuM2141 */
-
+		StartOS(EcuM_World.config->EcuMDefaultAppMode); /** @req EcuM2141 */
+		LDEBUG_PRINTF("%s():StartOs() after\n", __func__);
 	} else {
 #if (OS_NUM_CORES > 1 )
 		StatusType coreStatus;
 #endif
+		LDEBUG_PRINTF("%s():SecondaryCore Nr.%d\n", __func__,
+			      GetCoreID());
+
 		InitOS();
 		Os_IsrInit();
 #if (OS_NUM_CORES > 1 )
 		StartCore(GetCoreID() + 1, &coreStatus);
+		LDEBUG_PRINTF("%s():StartCore(n):coreSatus=%d\n", __func__,
+			      coreStatus);
 #endif
 		StartOS(OSDEFAULTAPPMODE);
 	}

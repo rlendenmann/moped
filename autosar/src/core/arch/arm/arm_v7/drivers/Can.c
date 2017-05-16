@@ -18,7 +18,7 @@
 #include "irq.h"
 
 #include "mcp2515.h"
-#include "bcm2835.h"
+#include "bcm283x.h"
 
 #if defined(USE_DET)
 #include "Det.h"
@@ -125,11 +125,11 @@ Can_GlobalType Can_Global =
 
 /* Type for holding information about each CAN controller */
 typedef struct {
-	CanIf_ControllerModeType 		state;					// Controller state (see R4.1.3 fig. 7-2)
-	uint32							lock_cnt;				// Nr of interrupt locks
-	const Can_ControllerConfigType* cfgCtrlPtr;     		// Pointer to controller configuration
-	Can_Arc_StatisticsType 			stats;					// Statistics
-	PduIdType 						swPduHandle; 			// PDU handle
+	CanIf_ControllerModeType state;                // Controller state (see R4.1.3 fig. 7-2)
+	uint32 lock_cnt;                               // Nr of interrupt locks
+	const Can_ControllerConfigType *cfgCtrlPtr;    // Pointer to controller configuration
+	Can_Arc_StatisticsType stats;                  // Statistics
+	PduIdType swPduHandle;                         // PDU handle
 } Can_UnitType;
 
 Can_UnitType CanUnit[CAN_CONTROLLER_CNT] =
@@ -799,19 +799,22 @@ void Can_InitController(uint8 ctrlId, const Can_ControllerConfigType *cfgCtrlPtr
 	uint8 i, j;
 	Std_ReturnType rv;
 	Can_ReturnType crv;
-	const Spi_DataType ctrlRegs[MCP2515_NR_BUFFERS] = {MCP2515_TXB0CTRL,				// Tx/Rx-buffer registers
-											  	  	   MCP2515_TXB1CTRL,
-													   MCP2515_TXB2CTRL,
-													   MCP2515_RXB0CTRL,
-													   MCP2515_RXB1CTRL};
-	const Spi_DataType maskRegs[MCP2515_NR_ACCMASKS] = {MCP2515_RXM0SIDH,					// Acceptance mask registers
-													 	MCP2515_RXM1SIDH};
-	const Spi_DataType filterRegs[MCP2515_NR_ACCFILTERS] = {MCP2515_RXF0SIDH,			// Acceptance filter registers
-															MCP2515_RXF1SIDH,
-															MCP2515_RXF2SIDH,
-															MCP2515_RXF3SIDH,
-															MCP2515_RXF4SIDH,
-															MCP2515_RXF5SIDH};
+	const Spi_DataType ctrlRegs[MCP2515_NR_BUFFERS] = {
+							MCP2515_TXB0CTRL, // Tx/Rx-buffer registers
+							MCP2515_TXB1CTRL,
+							MCP2515_TXB2CTRL,
+							MCP2515_RXB0CTRL,
+							MCP2515_RXB1CTRL };
+	const Spi_DataType maskRegs[MCP2515_NR_ACCMASKS] = {
+							MCP2515_RXM0SIDH, // Acceptance mask registers
+							MCP2515_RXM1SIDH };
+	const Spi_DataType filterRegs[MCP2515_NR_ACCFILTERS] = {
+							MCP2515_RXF0SIDH,			// Acceptance filter registers
+							MCP2515_RXF1SIDH,
+							MCP2515_RXF2SIDH,
+							MCP2515_RXF3SIDH,
+							MCP2515_RXF4SIDH,
+							MCP2515_RXF5SIDH };
 
 	/* Reset the MCP2515 CAN controller */
 	Can_ResetController();
@@ -857,29 +860,32 @@ void Can_InitController(uint8 ctrlId, const Can_ControllerConfigType *cfgCtrlPtr
 	/* Enable both rx-buffers to receive messages with standard ids (pp. 23-28 in mcp2515_can.pdf)
 	 * and allow RXB0 to rollover (i.e. write to RXB1 if a message arrives when RXB0 is full). */
 	Can_WriteController_BitModify(MCP2515_RXB0CTRL,
-								  (MCP2515_RXBnCTLR_RXM_MASK | BUKTMASK),
-								  (MCP2515_RXBnCTRL_RXM_STD | BUKTMASK));
+				      (MCP2515_RXBnCTLR_RXM_MASK | BUKTMASK),
+				      (MCP2515_RXBnCTRL_RXM_STD | BUKTMASK));
 	Can_WriteController_BitModify(MCP2515_RXB1CTRL,
-								  MCP2515_RXBnCTLR_RXM_MASK,
-								  MCP2515_RXBnCTRL_RXM_STD);
+				      MCP2515_RXBnCTLR_RXM_MASK,
+				      MCP2515_RXBnCTRL_RXM_STD);
 
 	if (cfgCtrlPtr->CanRxProcessing == CAN_ARC_PROCESS_TYPE_INTERRUPT) {
+		volatile struct bcm283x_irq_reg *irq = RPI_ARM_IRQ_BASE;
+
 		/* Initialize the pin (on MCU) that is connected to MCP2515's interrupt (INT) pin.
 		 * This pin should detect falling edge signals, since INT-pin is driven low by MCP2515
 		 * when an interrupt occurs. */
-		bcm2835_GpioFnSel(GPIO_CAN_IRQ, GPFN_IN);						// Define this pin to listen for inputs
-		bcm2835_SetReadWriteGpioReg(&GPFEN0, GPIO_CAN_IRQ);				// Make the pin react on falling edges
+		bcm2835_GpioFnSel(GPIO_CAN_IRQ, GPFN_IN);		// Define this pin to listen for inputs
+		bcm2835_SetReadWriteGpioReg(GPFEN, GPIO_CAN_IRQ);	// Make the pin react on falling edges
 
 		/* Install the interrupt handler */
 		ISR_INSTALL_ISR2("GPIO0", bcm2835_GpioIsr, BCM2835_IRQ_ID_GPIO_0, 2, 0);
 
 		/* Enable interrupts for both Rx-buffers */
 		Can_WriteController_Reg(MCP2515_CANINTE,
-								(MCP2515_CANINT_RX0I |
-								 MCP2515_CANINT_RX1I));
+					(MCP2515_CANINT_RX0I |
+					 MCP2515_CANINT_RX1I));
 
 		/* Enable this interrupt pin */
-		bcm2835_SetReadWriteGpioReg(&IRQ_ENABLE1, BCM2835_IRQ_ID_GPIO_0);
+		bcm2835_SetReadWriteIoReg(&irq->IRQ_ENABLE[BCM2835_IRQ_ID_GPIO_0 / 32],
+					  BCM2835_IRQ_ID_GPIO_0 % 32);
 	}
 
 	/* Now that everything is configured, set the CAN controller to either
@@ -1032,16 +1038,18 @@ void Can_MainFunction_Read(void) {
 	Spi_DataType stat;
 	Can_PduType pduInfo, pduInfo2;
 	int i;
+#if 0
 
-	const Spi_DataType rxBufRegs[MCP2515_NR_BUFFERS] = {MCP2515_RXBUF_0,					// Rx-buffer registers
-													    MCP2515_RXBUF_1};
-	const Spi_DataType rxStatBits[MCP2515_NR_BUFFERS] = {MCP2515_CANINT_RX0I,				// Rx-buffer interrupt status bits
-													     MCP2515_CANINT_RX1I};
+	const Spi_DataType rxBufRegs[MCP2515_NR_BUFFERS] = { MCP2515_RXBUF_0,	// Rx-buffer registers
+							     MCP2515_RXBUF_1 };
+#endif
+	const Spi_DataType rxStatBits[MCP2515_NR_BUFFERS] = { MCP2515_CANINT_RX0I,	// Rx-buffer interrupt status bits
+							      MCP2515_CANINT_RX1I} ;
 
 	/** @req 4.0.3/CAN181 Check that the module has been initialized  */
 	VALIDATE_NO_RV((Can_Global.initRun == CAN_READY), CAN_MAINFUNCTION_READ_SERVICE_ID, CAN_E_UNINIT);
 
-	int xx = bcm2835_ReadGpioPin(&GPEDS0, GPIO_CAN_IRQ);
+	int xx = bcm2835_ReadGpioPin(GPEDS, GPIO_CAN_IRQ);
 
 	//printf("Can_MainFunction_Read xx %d\r\n", xx);
 
@@ -1063,7 +1071,7 @@ void Can_MainFunction_Read(void) {
 
 	/* If there is data in any register, read it and clear the interrupt status bit,
 	 * so that new data can be written into the Rx-buffer */
-	for (i=0; i < MCP2515_NR_BUFFERS; i++) {
+	for (i = 0; i < MCP2515_NR_BUFFERS; i++) {
 	  //for (i=MCP2515_NR_BUFFERS-1; i >= 0 ; i--) {
 	  //printf("Can_MainFunction_Read statbits %d %d\r\n", i, rxStatBits[i]);
 		if (stat & rxStatBits[i]) {													// RXBUF_i contains data
@@ -1089,19 +1097,22 @@ void Can_MainFunction_Read(void) {
 			//printf("Can_ReadController_RxBuffer\r\n");
 			Can_ReadController_RxBuffer(i, &pduInfo);
 			CAN_DEBUG_PRINT("can: (%d)", i);
+#if CAN_DEBUG
 			for (int i = 0; i < pduInfo.length; i++) {								// Debug print out
-			  unsigned int cod = *(pduInfo.sdu+i);
-			  int dig;
-			  char codbuf[3];
-			  dig = (cod >> 4) & 0xf;
-			  codbuf[0] = (dig < 10) ? '0' + dig : 'A' + dig - 10;
-			  dig = cod & 0xf;
-			  codbuf[1] = (dig < 10) ? '0' + dig : 'A' + dig - 10;
-			  codbuf[2] = ' ';
-			  CAN_DEBUG_PRINT(codbuf);
-			  //CAN_DEBUG_PRINT("%d ", *(pduInfo.sdu+i));
+				unsigned int cod = *(pduInfo.sdu+i);
+				int dig;
+				char codbuf[3];
+
+				dig = (cod >> 4) & 0xf;
+				codbuf[0] = (dig < 10) ? '0' + dig : 'A' + dig - 10;
+				dig = cod & 0xf;
+				codbuf[1] = (dig < 10) ? '0' + dig : 'A' + dig - 10;
+				codbuf[2] = ' ';
+				CAN_DEBUG_PRINT(codbuf);
+				//CAN_DEBUG_PRINT("%d ", *(pduInfo.sdu+i));
 			}
-			CAN_DEBUG_PRINT("\r\n");
+#endif
+			CAN_DEBUG_PRINT("\n");
 #endif
 
 			/* Set event reception events and forward the CAN message upwards */
@@ -1147,38 +1158,34 @@ void Can_MainFunction_Read(void) {
 Std_ReturnType Can_CheckBaudrate(uint8 ctrlId, const uint16 baudrate)
 {
 	/* Locals */
-    const Can_UnitType 				*canUnit;
-    const Can_ControllerConfigType 	*cfgCtrlPtr;
-    const uint32 					*supportedBaudrate;
+	const Can_UnitType *canUnit = GET_CAN_UNIT_PTR(ctrlId);
+	const Can_ControllerConfigType *cfgCtrlPtr = canUnit->cfgCtrlPtr;
+	const uint32 *supportedBaudrate;
 
-    /* Check that the CAN module has been initialized, that we have a valid
-     * controller and that the baud rate value is not extremely wrong */
-    /** @req 4.0.3/CAN456 UNINIT */
-    VALIDATE( (Can_Global.initRun == CAN_READY),
-    		CAN_CHECK_BAUD_RATE_SERVICE_ID, CAN_E_UNINIT );
-    /** @req 4.0.3/CAN457 Invalid controller */
-    VALIDATE( VALID_CONTROLLER(ctrlId),
-    		CAN_CHECK_BAUD_RATE_SERVICE_ID, CAN_E_PARAM_CONTROLLER );
-    /** @req 4.0.3/CAN458 Invalid baudrate value */
-    VALIDATE( baudrate < CAN_MAX_BAUDRATE,
-    		CAN_CHECK_BAUD_RATE_SERVICE_ID, CAN_E_PARAM_BAUDRATE );
+	/* Check that the CAN module has been initialized, that we have a valid
+	* controller and that the baud rate value is not extremely wrong */
+	/** @req 4.0.3/CAN456 UNINIT */
+	VALIDATE( (Can_Global.initRun == CAN_READY),
+			CAN_CHECK_BAUD_RATE_SERVICE_ID, CAN_E_UNINIT );
+	/** @req 4.0.3/CAN457 Invalid controller */
+	VALIDATE( VALID_CONTROLLER(ctrlId),
+			CAN_CHECK_BAUD_RATE_SERVICE_ID, CAN_E_PARAM_CONTROLLER );
+	/** @req 4.0.3/CAN458 Invalid baudrate value */
+	VALIDATE( baudrate < CAN_MAX_BAUDRATE,
+			CAN_CHECK_BAUD_RATE_SERVICE_ID, CAN_E_PARAM_BAUDRATE );
 
-    /* Read controller configuration */
-    canUnit = GET_CAN_UNIT_PTR(ctrlId);
-    cfgCtrlPtr = canUnit->cfgCtrlPtr;
+	/* Loop through supported baud rates and return OK if this particular baud rate was found */
+	supportedBaudrate = cfgCtrlPtr->CanControllerSupportedBaudRates;
+	while (*supportedBaudrate < CAN_MAX_BAUDRATE) {
+		if (baudrate == *supportedBaudrate) {
+			return CAN_OK;
+		}
 
-    /* Loop through supported baud rates and return OK if this particular baud rate was found */
-    supportedBaudrate = cfgCtrlPtr->CanControllerSupportedBaudRates;
-    while (*supportedBaudrate < CAN_MAX_BAUDRATE) {
-    	if (baudrate == *supportedBaudrate) {
-    		return CAN_OK;
-    	}
+		supportedBaudrate++;
+	}
 
-    	supportedBaudrate++;
-    }
-
-    /* If we reached here, then the baudrate is not supported */
-    return CAN_NOT_OK;
+	/* If we reached here, then the baudrate is not supported */
+	return CAN_NOT_OK;
 }
 
 /**
@@ -1200,7 +1207,7 @@ Std_ReturnType Can_ChangeBaudrate(uint8 ctrlId, const uint16 baudrate) {
 		Can_WriteController_Reg(MCP2515_CNF2, MCP2515_CNF2_BITS);
 		Can_WriteController_Reg(MCP2515_CNF3, MCP2515_CNF3_BITS);
 
-		CAN_DEBUG_PRINT("Baudrate set successfully to %d\r\n", baudrate);
+		CAN_DEBUG_PRINT("Baudrate set successfully to %d\n", baudrate);
 
 		return E_OK;
 	}

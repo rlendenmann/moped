@@ -89,11 +89,13 @@ boolean ComWrite = false;
  */
 void SensorTask(void) {
 	EventMaskType Event;
-	printf("sensor task\r\n");
+	printf("sensor task\n");
 	SpeedSensor_Init();
 	do {
 		WaitEvent(EVENT_MASK_SensorEvent);
 		GetEvent(TASK_ID_SensorTask, &Event);
+
+		printf("sensor Event=0x%x\n", Event);
 
 		if (Event & EVENT_MASK_SensorEvent) {
 			ClearEvent(EVENT_MASK_SensorEvent);
@@ -124,6 +126,8 @@ void ActuatorTask(void) { /** @req SWS_Rte_02251 */
         			EVENT_MASK_ServoEvent | EVENT_MASK_SteerSelectEvent);
         GetEvent(TASK_ID_ActuatorTask, &Event);
 
+		printf("Actuator Event=0x%x\n", Event);
+
 		if (Event & EVENT_MASK_SpeedSelectEvent) {
 			ClearEvent(EVENT_MASK_SpeedSelectEvent);
 //			Rte_MotorSWCProto_MotorControlRunnable();
@@ -152,6 +156,9 @@ void ActuatorTask(void) { /** @req SWS_Rte_02251 */
 
 void RteTask(void) { /** @req SWS_Rte_02251 */
     EventMaskType Event;
+
+    printf("\ninfor: RTE task\n");
+
     do {
         WaitEvent(	EVENT_MASK_AdcEvent | EVENT_MASK_FrontWheelEvent | EVENT_MASK_pluginCommunicationSCUEvent |
                		EVENT_MASK_pluginCommunicationTCUEvent | EVENT_MASK_positionDataEvent |
@@ -159,6 +166,7 @@ void RteTask(void) { /** @req SWS_Rte_02251 */
 					EVENT_MASK_pluginInstallationEvent | EVENT_MASK_RteFunctionEvent);
         GetEvent(TASK_ID_RteTask, &Event);
 
+		printf("Rte Event=0x%x\n", Event);
 
 		if (Event & EVENT_MASK_AdcEvent) {
 			ClearEvent(EVENT_MASK_AdcEvent);

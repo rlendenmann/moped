@@ -18,7 +18,7 @@
 #include "Pwm.h"
 #endif
 
-#include "bcm2835.h"
+#include "bcm283x.h"
 
 #define PI 	   			3.14159265f
 
@@ -275,15 +275,18 @@ Std_ReturnType IoHw_WriteServo_DutyCycle(/*IN*/uint32 portDefArg1, /*OUT*/uint8 
 	return E_OK;
 }
 
+/* not required
 #define bcm2835_SetPinInTwinGpioReg bcm2835_SetWriteOnlyGpioReg
 #define LED_RED		GPIO_LED_RED
 #define LED_YELLOW1	GPIO_LED_YELLOW1
 #define LED_YELLOW2	GPIO_LED_YELLOW2
-
+*/
 Std_ReturnType IoHw_Write_Led(/*IN*/uint32 portDefArg1, /*IN*/uint8 portDefArg2, /*OUT*/uint32 * Pin, /*OUT*/uint8 * Level){
 
 	uint8 LED_State = *Level;
 	uint32 LED_Pin = *Pin;
+	uint32 pin;
+
 #if LED_PRINT_DEBUG
 	printf("infor: IoHw pin %d, level %d \r\n", LED_Pin, LED_State);
 
@@ -291,30 +294,18 @@ Std_ReturnType IoHw_Write_Led(/*IN*/uint32 portDefArg1, /*IN*/uint8 portDefArg2,
 	switch (LED_Pin) {
 
 	case GPIO_LED_RED:
-		if (LED_State == 0) {
-			bcm2835_SetPinInTwinGpioReg(&GPCLR0, LED_RED);
-		} else {
-			bcm2835_SetPinInTwinGpioReg(&GPSET0, LED_RED);
-		}
-		break;
-
 	case GPIO_LED_YELLOW1:
-		if (LED_State == 0) {
-			bcm2835_SetPinInTwinGpioReg(&GPCLR0, LED_YELLOW1);
-		} else {
-			bcm2835_SetPinInTwinGpioReg(&GPSET0, LED_YELLOW1);
-		}
-		break;
-
 	case GPIO_LED_YELLOW2:
-		if (LED_State == 0) {
-			bcm2835_SetPinInTwinGpioReg(&GPCLR0, LED_YELLOW2);
-		} else {
-			bcm2835_SetPinInTwinGpioReg(&GPSET0, LED_YELLOW2);
-		}
+		pin = LED_Pin;
 		break;
 	default:
-		break;
+		return E_NOT_OK;
+	}
+
+	if (LED_State = 0) {
+		bcm2835_ClearGpioPin(pin);
+	} else {
+		bcm2835_SetGpioPin(pin);
 	}
 
 	return E_OK;

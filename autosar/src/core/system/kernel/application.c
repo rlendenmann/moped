@@ -413,19 +413,22 @@ StatusType GetActiveApplicationMode( AppModeType* mode) {
 /**
  *
  */
-void Os_ApplStart( void ) {
+void Os_ApplStart(void)
+{
 	uint16_t i;
+	CoreIDType coreId = GetCoreID();
 
-	/* Call startuphooks for all applications */
-	for(i=0;i<OS_APPLICATION_CNT;i++) {
+	/* Call startuphooks for all applications depending on core */
+	for (i=0; i < OS_APPLICATION_CNT; i++) {
+		if (Os_AppConst[i].core == coreId) {
+			Os_AppVar[i].trusted = Os_AppConst[i].trusted;
+			Os_AppVar[i].state = APPLICATION_ACCESSIBLE;
 
-		Os_AppVar[i].state = APPLICATION_ACCESSIBLE;
-
-		if( Os_AppConst[i].StartupHook != NULL ) {
-			Os_AppConst[i].StartupHook();
+			if( Os_AppConst[i].StartupHook != NULL ) {
+				Os_AppConst[i].StartupHook();
+			}
 		}
 	}
 }
-
 
 #endif

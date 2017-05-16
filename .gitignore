@@ -8,3 +8,11 @@
 
 *.metadata/*
 *.recommenders/*
+*.sublime-*
+.tags*
+*/preprocessed/*
+autosar/**/obj_*
+autosar/SCU/
+autosar/VCU/
+autosar/**/binaries/
+plugins/**/target/

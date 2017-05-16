@@ -17,5 +17,5 @@ cd src/core
 if [ "$1" = "clean" ]; then
 	make clean
 else
-	make all
+	make VERBOSE=y all
 fi

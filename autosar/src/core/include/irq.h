@@ -107,6 +107,9 @@ void *Irq_Entry( uint8_t irq_nr, void *stack );
  *
  */
 void *Irq_Entry( void *stack_p );
+void *Irq_Entry_c1(void *stack_p);
+void *Irq_Entry_c2(void *stack_p);
+void *Irq_Entry_c3(void *stack_p);
 #endif
 
 struct OsIsrConst;

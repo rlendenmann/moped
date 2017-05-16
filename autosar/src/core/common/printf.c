@@ -82,7 +82,7 @@
 #include <ctype.h>
 
 //TEMP
-#if defined(CFG_ARM_V6)
+#if defined(CFG_ARM_RPI)
 #include "Uart.h"
 #endif
 
@@ -197,8 +197,19 @@ int vsprintf(char *buffer, const char *format, va_list ap) {
 
 int vfprintf(FILE *file, const char *format, va_list ap) {
 	int rv;
+#if defined(CFG_ARM_RPI)
+	unsigned char buffer[256];
+	unsigned char *p = buffer;
+
+	/* print into a local buffer and send it to stdout in one go */
+	rv = print(file, &p, 256, format, ap);
+	extern void pi_printf2(char* s, int length);
+
+	pi_printf2(buffer, rv);
+#else
 	/* Just print to stdout */
 	rv = print(file,NULL,~(size_t)0, format,ap);
+#endif
 	return rv;
 }
 
@@ -244,7 +255,8 @@ static inline int emitChar( FILE *file, char **buf, char c, int *left ) {
 		fflush(stdout);
 #else
 //TEMP-#if
-#if defined(CFG_ARM_V6)
+#if defined(CFG_ARM_RPI)
+		extern void mini_uart_send(uint32 c);
 		mini_uart_send(c);
 #else
 		putc(c,stdout);
@@ -396,7 +408,7 @@ int print(FILE *file, char **buffer, size_t n, const char *format, va_list ap)
 	int flags;
 	char *str;
 	int width;
-	int left = n;
+	int left = n, rv = -1;
 	char wBuff[4];
 
 	while ( (ch = *format++) ) {
@@ -440,7 +452,7 @@ int print(FILE *file, char **buffer, size_t n, const char *format, va_list ap)
 					wBuff[a++] = *format++;
 				}
 				wBuff[a] = '\0';
-     		    width = strtoul(wBuff,NULL,10);
+				width = strtoul(wBuff,NULL,10);
 
 				ch = *format++;
 			} else {
@@ -497,11 +509,14 @@ int print(FILE *file, char **buffer, size_t n, const char *format, va_list ap)
 		}
 	}
 //	va_end(ap);		// Removed, TODO: Check the va_start/va_end handling (used in calling functions also).
-	if(buffer!=0) {
+
+	rv = n - left;	// left is min 1
+
+	if (buffer!=0) {
 		left = 0;
 		emitChar(file,buffer,'\0',&left);
 	}
-	return 0; // Wrong.. but for now.
+	return rv; // Wrong.. but for now.
 }
 
 #if 0

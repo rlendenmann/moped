@@ -69,6 +69,12 @@ OsTaskVarType * os_alloc_new_pcb( void ) {
 //extern TaskType Os_AddTask( OsTaskVarType *pcb );
 
 //static uint8 stackTop = 0x42;
+
+/* this is a hack as the official APIs below do not work properly in init phase
+   on a multicore archtitecture. Better would be to split isr handling on per
+   core bases. */
+static volatile unsigned int isr_slock;
+
 #if OS_ISR_CNT != 0
 static void Os_IsrAddWithId( const OsIsrConstType * restrict isrPtr, int id ) {
 	Os_IsrVarList[id].constPtr = isrPtr;
@@ -81,22 +87,29 @@ static void Os_IsrAddWithId( const OsIsrConstType * restrict isrPtr, int id ) {
 }
 #endif
 
-void Os_IsrInit( void ) {
-
+void Os_IsrInit( void )
+{
+	/* cpu core specific init */
 	Irq_Init();
 
-	isrCnt = OS_ISR_CNT;
-	/* Probably something smarter, but I cant figure out what */
-	memset(Os_VectorToIsr,ILL_VECTOR,NUMBER_OF_INTERRUPTS_AND_EXCEPTIONS);
+	if (GetCoreID() == OS_CORE_ID_MASTER) {
+		isrCnt = OS_ISR_CNT;
+
+	/* Table is global to all CPU's. */
+	//if (GetCoreID() == OS_CORE_ID_MASTER) {
+		/* Probably something smarter, but I cant figure out what */
+		memset(Os_VectorToIsr, ILL_VECTOR, NUMBER_OF_INTERRUPTS_AND_EXCEPTIONS);
+	//}
 
 #if OS_ISR_CNT != 0
-	/* Attach the interrupts */
-	GetSpinlock(OS_SPINLOCK);
-	for (int i = 0; i < isrCnt; i++) {
-		Os_IsrAddWithId(&Os_IsrConstList[i],i);
-	}
-	ReleaseSpinlock(OS_SPINLOCK);
+		/* Attach the interrupts */
+		//GetSpinlock(OS_SPINLOCK);
+		for (int i = 0; i < isrCnt; i++) {
+			Os_IsrAddWithId(&Os_IsrConstList[i],i);
+		}
+		//ReleaseSpinlock(OS_SPINLOCK);
 #endif
+	}
 }
 
 /**
@@ -105,14 +118,19 @@ void Os_IsrInit( void ) {
  *
  * @param isrPtr Pointer to const data holding ISR information.
  * @return
+ * TODO: make it multicore compliant. currently susing simply global isr_lock
  */
-ISRType Os_IsrAdd( const OsIsrConstType * restrict isrPtr ) {
+ISRType Os_IsrAdd(const OsIsrConstType * restrict isrPtr)
+{
 	ISRType id;
 	ISRType installedId;
 
 	assert( isrPtr != NULL );
 	assert( (isrPtr->vector + IRQ_INTERRUPT_OFFSET) < NUMBER_OF_INTERRUPTS_AND_EXCEPTIONS );
 
+#if (OS_NUM_CORES > 1)
+	Os_ArchGetSpinlock(&isr_slock);
+#endif
 	/* Check if we already have installed it */
 	installedId = Os_VectorToIsr[isrPtr->vector + IRQ_INTERRUPT_OFFSET ];
 
@@ -122,11 +140,11 @@ ISRType Os_IsrAdd( const OsIsrConstType * restrict isrPtr ) {
 	} else {
 		/* It a new vector */
 #if (OS_NUM_CORES > 1)
-		GetSpinlock(OS_RTE_SPINLOCK);
+		//GetSpinlock(OS_RTE_SPINLOCK);
 #endif
 		id = isrCnt++;
 #if (OS_NUM_CORES > 1)
-		ReleaseSpinlock(OS_RTE_SPINLOCK);
+		//ReleaseSpinlock(OS_RTE_SPINLOCK);
 #endif
 		/* Since OS_ISR_MAX_CNT defines the allocation limit for Os_IsrVarList,
 		 * we must not allocate more IDs than that */
@@ -140,6 +158,9 @@ ISRType Os_IsrAdd( const OsIsrConstType * restrict isrPtr ) {
 		Os_VectorToIsr[isrPtr->vector + IRQ_INTERRUPT_OFFSET ] = id;
 		Irq_EnableVector( isrPtr->vector, isrPtr->priority, Os_ApplGetCore(isrPtr->appOwner )  );
 	}
+#if (OS_NUM_CORES > 1)
+	Os_ArchReleaseSpinlock(&isr_slock);
+#endif
 
 	return id;
 }
@@ -383,7 +404,7 @@ void *Os_Isr( void *stack, int16_t vector ) {
 #endif
 
 
-#if defined(CFG_HCS12D) || defined(CFG_ARM_V6)
+#if defined(CFG_HCS12D) || defined(CFG_ARM_RPI)
 	isrPtr->constPtr->entry();
 #else
 	Irq_Enable();

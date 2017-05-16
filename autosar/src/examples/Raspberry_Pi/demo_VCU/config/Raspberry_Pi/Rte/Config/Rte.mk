@@ -12,3 +12,4 @@ obj-y += Rte_MotorSWC.o
 obj-y += Rte_PirteSWC.o
 obj-y += Rte_RearWheelSWC.o
 obj-y += Rte_ServoSWC.o
+obj-y += Ioc.o

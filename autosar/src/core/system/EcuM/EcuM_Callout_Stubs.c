@@ -433,10 +433,17 @@ void EcuM_AL_DriverInitThree(const EcuM_ConfigType* ConfigPtr)
 #endif
 }
 
+static uint32 loop_cnt;
+
 bool EcuM_LoopDetection(void)
 {
-	//TODO: How is reset loop detection implemented?
-	return false;
+	loop_cnt++;
+
+	if (loop_cnt <= 1) {
+		return false;
+	}
+
+	return true;
 }
 
 void EcuM_OnEnterRun(void)

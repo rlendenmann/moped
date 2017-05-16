@@ -30,7 +30,7 @@
 
 #include "Pwm.h"
 #include "Dma.h"
-#include "bcm2835.h"
+#include "bcm283x.h"
 
 /************************************************************************************/
 /*									Definitions 	 		 						*/
@@ -126,10 +126,11 @@ static void Pwm_GeneratePulse(Pwm_ChannelType channel,
 static void Pwm_ConfigureDma(Pwm_ChannelType channel,
 							 uint32 nr_samples)
 {
+	volatile struct bcm283x_gpio_reg *gpio = RPI_ARM_GPIO_BASE;
 	int i;
-	uint32 sourceAddr;									// Address of each data sample, used as source by DMA
-	uint32 bus_gpclr0 = MAP_TO_BUSADDRESS(GPCLR0);		// GPIO Pin Output Clear 0 (p.90 in BCM2835-ARM-Peripherals.pdf)
-	uint32 bus_fif1 = MAP_TO_BUSADDRESS(PWM_FIF1);		// PWM FIFO Input (p.141 in BCM2835-ARM-Peripherals.pdf)
+	uint32 sourceAddr;					// Address of each data sample, used as source by DMA
+	uint32 bus_gpclr0 = MAP_TO_BUSADDRESS(&gpio->GPCLR[0]);	// GPIO Pin Output Clear 0 (p.90 in BCM2835-ARM-Peripherals.pdf)
+	uint32 bus_fif1 = MAP_TO_BUSADDRESS(&PWM_FIF1);		// PWM FIFO Input (p.141 in BCM2835-ARM-Peripherals.pdf)
     uint32 information1 = DMA_NO_WIDE_BURSTS |			// DMA transfer info configuration (see pp.50-52 in BCM2835-ARM-Peripherals.pdf)
     					  DMA_WAIT_RESP;
     uint32 information2 = DMA_NO_WIDE_BURSTS |			// DMA transfer info configuration (see pp.50-52 in BCM2835-ARM-Peripherals.pdf)
@@ -218,9 +219,10 @@ static void Pwm_ConfigureChannel(Pwm_ChannelType channel,
 static void Pwm_GeneratePulse(Pwm_ChannelType channel,
 							  int pulse_start, int pulse_width)
 {
+	volatile struct bcm283x_gpio_reg *io = RPI_ARM_GPIO_BASE;
 	static uint32 selected_pins;
-	uint32 bus_gpclr0 = MAP_TO_BUSADDRESS(GPCLR0);
-	uint32 bus_gpset0 = MAP_TO_BUSADDRESS(GPSET0);
+	uint32 bus_gpclr0 = MAP_TO_BUSADDRESS(&io->GPCLR[0]);
+	uint32 bus_gpset0 = MAP_TO_BUSADDRESS(&io->GPSET[0]);
 	uint32 *dp = pwmChannels[channel].data_base;
 	uint8 gpio = pwmGpios[channel];
 

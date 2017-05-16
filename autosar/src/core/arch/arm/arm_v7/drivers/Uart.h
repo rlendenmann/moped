@@ -12,12 +12,12 @@
 
 
 void Uart_Init(void);
-void mini_uart_send ( uint32 c );
-void mini_uart_sendstr (char *s);
-void mini_uart_sendhex ( uint32 d, bool newline );
+/*void mini_uart_send(uint32 c);
+void mini_uart_sendstr(char *s);
+void mini_uart_sendhex(uint32 d, bool newline); */
 void mini_uart_sendDec(uint32 n);
-uint32 mini_uart_recv ( void );
-uint32 mini_uart_lcr ( void );
+uint32 mini_uart_recv(void);
+uint32 mini_uart_lcr(void);
 
 void chprintf(const char *fmt, ...);
 

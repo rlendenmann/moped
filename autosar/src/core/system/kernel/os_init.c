@@ -18,6 +18,8 @@
 #include "Os.h"
 #include "internal.h"
 #include "arc.h"
+#define DEBUG_LV 1
+#define USE_DEBUG_PRINTF
 #include "debug.h"
 #include "task_i.h"
 #include "sys.h"
@@ -102,11 +104,16 @@ static void copyPcbParts( OsTaskVarType *pcb, const OsTaskConstType *r_pcb ) {
 
 char mem1000[16*64];
 
-void InitOS( void ) {
+void InitOS(void)
+{
 	int i;
 	OsTaskVarType *tmpPcbPtr;
 	OsIsrStackType intStack;
 
+	if (GetCoreID() == OS_CORE_ID_MASTER) {
+		memset(&os_error, 0, sizeof(os_error));
+
+		memset(mem1000, 0x00, sizeof(mem1000));
 #if 0
 	int b = 0x1000;
 	b = 0;
@@ -118,17 +125,22 @@ void InitOS( void ) {
 	  mem1000[i] = p[i];
 	}
 #endif
+	}
 
 	Os_CfgValidate();
 
-	DEBUG(DEBUG_LOW,"os_init");
+	DEBUG(DEBUG_HIGH, "%s:core_id=%d\n", __func__, GetCoreID());
+
+	DEBUG(DEBUG_LOW,"os_init\n");
 
 	/* Clear sys */
-	memset(OS_SYS_PTR,0,sizeof(Os_SysType));
+	memset(OS_SYS_PTR, 0, sizeof(Os_SysType));
 
 	OS_SYS_PTR->status.init_os_called = true;
 
 	Os_ArchInit();
+
+	DEBUG(DEBUG_MEDIUM, "After AchInit\n");
 
 	/* Get the numbers defined in the editor */
 	OS_SYS_PTR->isrCnt = OS_ISR_CNT;
@@ -164,7 +176,7 @@ void InitOS( void ) {
 	// Put the one that belong in the ready queue there
 	// TODO: we should really hash on priority here to get speed, but I don't care for the moment
 	// TODO: Isn't this just EXTENED tasks ???
-	for( i=0; i < OS_TASK_CNT; i++) {
+	for (i = 0; i < OS_TASK_CNT; i++) {
 		tmpPcbPtr = Os_TaskGet(i);
 #if (OS_NUM_CORES > 1)
 		if (Os_OnRunningCore(OBJECT_TASK,i)) {
@@ -173,7 +185,7 @@ void InitOS( void ) {
 			Os_TaskContextInit(tmpPcbPtr);
 			TAILQ_INIT(&tmpPcbPtr->resourceHead);
 			TAILQ_INIT(&tmpPcbPtr->spinlockHead);
-			DEBUG(DEBUG_LOW,"pid:%d name:%s prio:%d\n",tmpPcbPtr->constPtr->pid,tmpPcbPtr->constPtr->name,tmpPcbPtr->activePriority);
+			DEBUG(DEBUG_HIGH,"pid:%d name:%s prio:%d\n",tmpPcbPtr->constPtr->pid,tmpPcbPtr->constPtr->name,tmpPcbPtr->activePriority);
 #if (OS_NUM_CORES > 1)
 		}
 #endif
@@ -188,13 +200,14 @@ void InitOS( void ) {
 	Os_ResourceInit();
 
 	// Now all tasks should be created.
+	DEBUG(DEBUG_HIGH, "%s: ready\n", __func__);
 }
-volatile boolean beforeStartHooks[OS_NUM_CORES] = {false};
-volatile boolean afterStartHooks[OS_NUM_CORES] = {false};
-volatile boolean afterIsrSetup[OS_NUM_CORES] = {false};
-
 
 #if (OS_NUM_CORES > 1)
+static volatile boolean beforeStartHooks[OS_NUM_CORES] = {false};
+static volatile boolean afterStartHooks[OS_NUM_CORES] = {false};
+static volatile boolean afterIsrSetup[OS_NUM_CORES] = {false};
+
 /**
  * TODO: This will of course not work in a cached
  * system at all....
@@ -204,12 +217,23 @@ volatile boolean afterIsrSetup[OS_NUM_CORES] = {false};
  */
 static void syncCores(volatile boolean syncedCores[]) {
 	CoreIDType coreId = GetCoreID();
+
 	assert(coreId < OS_NUM_CORES && coreId >= 0);
 	boolean syncOk = false;
 	assert(syncedCores[coreId] == false);
+
+	/*DEBUG(DEBUG_HIGH, "%s() coreId=%d dbg=x%x,x%x,x%x,x%x\n", __func__, coreId,
+	      core_dbg[0] , core_dbg[1], core_dbg[2], core_dbg[3]); */
+
 	syncedCores[coreId] = true;
+	smp_mb();
 	while (!syncOk) {
 		syncOk = true;
+		/*if (oldCnt != core_cnt[coreId +1]) {
+			DEBUG(DEBUG_HIGH, "%s() coreId=%d slock[1]=%d xchg:cnt[coreId+1]=%d\n",
+			      __func__, coreId, core_boot_slock[coreId +1], oldCnt);
+			oldCnt = core_cnt[coreId + 1];
+		} */
 		for (int i = 0; i < OS_NUM_CORES; i++) {
 			if (syncedCores[i] == false) {
 				syncOk = false;
@@ -219,7 +243,8 @@ static void syncCores(volatile boolean syncedCores[]) {
 }
 #endif
 
-static void os_start( void ) {
+static void os_start(void)
+{
 	uint16_t i;
 	OsTaskVarType *tmpPcbPtr = NULL;
 
@@ -227,6 +252,8 @@ static void os_start( void ) {
 	// but we don't want them to fire just yet
 	Irq_Disable();
 	assert(OS_SYS_PTR->status.init_os_called);
+
+	DEBUG(DEBUG_HIGH, "%s\n", __func__);
 
 	/* TODO: fix ugly */
 	/* Call the startup hook */
@@ -257,23 +284,7 @@ static void os_start( void ) {
 	Os_SchTblAutostart();
 #endif
 
-	// Set up the systick interrupt
-	{
-		Os_SysTickInit();
-#if (OS_NUM_CORES > 1)
-		Os_CoreNotificationInit();
-#endif
-		if (GetCoreID() == OS_CORE_ID_MASTER) {
-			uint32_t sys_freq = McuE_GetSystemClock();
-			Os_SysTickStart(sys_freq/OsTickFreq);
-		}
-	}
-#if (OS_NUM_CORES > 1)
-	/* This is not an autosar req, but cores need to be synchronnized here because
-	 * the isr handler uses shared data*/
-	syncCores(afterIsrSetup);
 	/* Find highest Autostart task */
-#endif
 	{
 		OsTaskVarType *iterPcbPtr;
 		OsPriorityType topPrio = -1;
@@ -281,7 +292,7 @@ static void os_start( void ) {
 		for(i=0;i<OS_TASK_CNT;i++) {
 			iterPcbPtr = Os_TaskGet(i);
 			if (Os_OnRunningCore(OBJECT_TASK,iterPcbPtr->constPtr->pid)) {
-				if(	iterPcbPtr->constPtr->autostart ) {
+				if (iterPcbPtr->constPtr->autostart) {
 					if( iterPcbPtr->activePriority > topPrio ) {
 						tmpPcbPtr = iterPcbPtr;
 						topPrio = iterPcbPtr->activePriority;
@@ -300,10 +311,6 @@ static void os_start( void ) {
 			}
  		}
 #endif
-	}
-
-	// Swap in prio proc.
-	{
 		// FIXME: Do this in a more structured way.. setting OS_SYS_PTR->currTaskPtr manually is not the way to go..
 		OS_SYS_PTR->currTaskPtr = tmpPcbPtr;
 #if	(OS_USE_APPLICATIONS == STD_ON)
@@ -315,10 +322,36 @@ static void os_start( void ) {
 		assert(tmpPcbPtr->activations < tmpPcbPtr->constPtr->activationLimit);
 		tmpPcbPtr->activations++;
 
+	}
+
+	// Set up the systick interrupt
+	{
+		/* sys tick is global */
+		if (GetCoreID() == OS_CORE_ID_MASTER) {
+			Os_SysTickInit();
+		}
+#if (OS_NUM_CORES > 1)
+		Os_CoreNotificationInit();
+#endif
+		if (GetCoreID() == OS_CORE_ID_MASTER) {
+			uint32_t sys_freq = McuE_GetSystemClock();
+			Os_SysTickStart(sys_freq/OsTickFreq);
+		}
+	}
+#if (OS_NUM_CORES > 1)
+	/* This is not an autosar req, but cores need to be synchronnized here because
+	 * the isr handler uses shared data*/
+	syncCores(afterIsrSetup);
+	DEBUG(DEBUG_HIGH, "%s afterIsrSetup coreId=%d\n", __func__, GetCoreID());
+#endif
+
+	// Swap in prio proc.
+	{
 		// NOTE! We don't go for os_swap_context() here..
 		// first arg(NULL) is dummy only
 		Os_TaskSwapContextTo(NULL,tmpPcbPtr);
 		// We should not return here
+		DEBUG(DEBUG_HIGH, "%s: ASSERT", __func__);
 		assert(0);
 	}
 }

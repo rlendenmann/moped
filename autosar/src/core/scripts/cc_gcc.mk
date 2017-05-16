@@ -31,7 +31,7 @@ CFG_CLANG=y
 endif
 
 cflags-$(CFG_OPT_RELEASE) += -O3
-cflags-$(CFG_OPT_DEBUG)   += -g -O0
+cflags-$(CFG_OPT_DEBUG)   += -g
 cflags-$(CFG_OPT_SIZE)    += -g -Os
 cflags-$(CFG_OPT_FLAGS)   += $(SELECT_OPT)
 
@@ -81,6 +81,9 @@ cflags-$(CFG_GCOV) += -ftest-coverage
 
 # Get machine cflags
 #cflags-y		+= $(cflags-$(ARCH))
+
+# MCU specific flags
+cflags-y += $(cflags-$(ARCH_MCU))
 
 CFLAGS = $(cflags-y) $(cflags-yy)
 
@@ -179,10 +182,9 @@ LD_END_GRP = --end-group
 #
 # ASFLAGS 		- assembler flags
 # ASOUT 		- how to generate output file
+AS = $(CROSS_COMPILE)as
 
-AS	= 	$(CROSS_COMPILE)as
-
-ASFLAGS += --gdwarf2
+ASFLAGS += -gdwarf
 ASOUT = -o $@
 
 # ---------------------------------------------------------------------------
@@ -190,16 +192,14 @@ ASOUT = -o $@
 
 #DDUMP          = $(Q)$(COMPILER_ROOT)/$(cross_machine-y)-objcopy
 #DDUMP_FLAGS    = -O srec
-OBJCOPY 		= $(CROSS_COMPILE)objcopy
+OBJCOPY = $(CROSS_COMPILE)objcopy
 
 # ---------------------------------------------------------------------------
 # Archiver
 #
 # AROUT 		- archiver flags
-
-AR	= 	$(CROSS_COMPILE)ar
-AROUT 	= $@
-
+AR = (CROSS_COMPILE)ar
+AROUT= $@
 
 ifdef CFG_HC1X
 define do-memory-footprint

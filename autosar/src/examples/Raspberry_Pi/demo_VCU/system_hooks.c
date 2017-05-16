@@ -25,10 +25,12 @@
 
 #include "Mcu.h"
 
-/* ----------------------------[private define]------------------------------*/
-#define ERROR_LOG_SIZE 1
+#include "multicore_i.h"
 
-//#define USE_LDEBUG_PRINTF	1
+/* ----------------------------[private define]------------------------------*/
+#define ERROR_LOG_SIZE (OS_NUM_CORES * 2)
+
+#define USE_LDEBUG_PRINTF	1
 #include "debug.h"
 
 /* ----------------------------[private macro]-------------------------------*/
@@ -56,6 +58,8 @@ struct LogBad {
 	TaskType taskId;
 	OsServiceIdType serviceId;
 	StatusType error;
+	void    *pc;
+	uint32_t coreId;
 } LogBadType;
 
 
@@ -77,14 +81,21 @@ ProtectionReturnType ProtectionHook( StatusType FatalError ) {
 }
 
 /**
- *
+ * TODO: this is a global hook, we should not do applicaion/specific operations
  */
-void StartupHook( void ) {
-//	LDEBUG_PRINTF("## StartupHook\n");
+void StartupHook( void )
+{
+	CoreIDType coreId = GetCoreID();
+	uint32_t sys_freq;
 
-	uint32_t sys_freq = McuE_GetSystemClock();
+	if (OS_CORE_ID_MASTER == coreId) {
+		sys_freq = McuE_GetSystemClock();
+	//	LDEBUG_PRINTF("## StartupHook\n");
+
+
+		LDEBUG_PRINTF("Sys clock %d Hz\n", sys_freq);
+	}
 	(void)sys_freq;
-	LDEBUG_PRINTF("Sys clock %d Hz\n",sys_freq);
 }
 
 /**
@@ -109,7 +120,11 @@ void ErrorHook( StatusType error ) {
 	TaskType task;
 	static struct LogBad LogBad[ERROR_LOG_SIZE];
 	static uint8_t ErrorCount = 0;
-	printf("ErrorHook: %d\r\n", error);
+	CoreIDType coreId = Os_GetCoreId();
+
+#ifndef USE_LDEBUG_PRINTF
+	printf("ErrorHook: %d\n", error);
+#endif
 	GetTaskID(&task);
 
 
@@ -141,7 +156,10 @@ void ErrorHook( StatusType error ) {
 		break;
 	}
 
-	LDEBUG_PRINTF("## ErrorHook err=%u\n",Error);
+	LDEBUG_PRINTF("## ErrorHook err=%u task=%u service=%d p1=0x%x, p2=0x"
+		      "%x p3=0x%x pc=0x%x coreId=%d\n", error, task, service,
+		      os_error.param1, os_error.param2, os_error.param3,
+		      os_error.pc, coreId);
 
 	/* Log the errors in a buffer for later review */
 	LogBad[ErrorCount].param1 = os_error.param1;
@@ -150,6 +168,7 @@ void ErrorHook( StatusType error ) {
 	LogBad[ErrorCount].serviceId = service;
 	LogBad[ErrorCount].taskId = task;
 	LogBad[ErrorCount].error = error;
+	LogBad[ErrorCount].pc = os_error.pc;
 
 	ErrorCount++;
 
@@ -157,9 +176,20 @@ void ErrorHook( StatusType error ) {
 	(void)LogBad[ErrorCount].param1;
 
 	// Stall if buffer is full.
-	while(ErrorCount >= ERROR_LOG_SIZE)
+	while (ErrorCount >= ERROR_LOG_SIZE)
 	{
+		int i;
 
+		for (i = 0; i < ERROR_LOG_SIZE; i++) {
+		LDEBUG_PRINTF("## ErrorHook err=%u taskId=%u serviceId=%d p1=0x%x, p2=0x"
+			      "%x p3=0x%x pc=0x%x coreId=%d\n", LogBad[ErrorCount].error,
+			      LogBad[ErrorCount].taskId, LogBad[ErrorCount].serviceId,
+			      LogBad[ErrorCount].param1, LogBad[ErrorCount].param2,
+			      LogBad[ErrorCount].param3, LogBad[ErrorCount].pc,
+			      LogBad[ErrorCount].coreId);
+		};
+
+		ErrorCount = 0;
 	};
 }
 

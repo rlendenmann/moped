@@ -26,9 +26,9 @@
 #include "Mcu.h"
 
 /* ----------------------------[private define]------------------------------*/
-#define ERROR_LOG_SIZE 1
+#define ERROR_LOG_SIZE 4
 
-//#define USE_LDEBUG_PRINTF	1
+#define USE_LDEBUG_PRINTF	1
 #include "debug.h"
 
 /* ----------------------------[private macro]-------------------------------*/
@@ -53,6 +53,7 @@ struct LogBad {
 	uint32_t param1;
 	uint32_t param2;
 	uint32_t param3;
+	void     *pc;
 	TaskType taskId;
 	OsServiceIdType serviceId;
 	StatusType error;
@@ -141,7 +142,7 @@ void ErrorHook( StatusType error ) {
 		break;
 	}
 
-	LDEBUG_PRINTF("## ErrorHook err=%u\n",Error);
+	LDEBUG_PRINTF("## ErrorHook err=%u\n", error);
 
 	/* Log the errors in a buffer for later review */
 	LogBad[ErrorCount].param1 = os_error.param1;

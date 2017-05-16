@@ -15,7 +15,7 @@
  *
  */
 
-#include "bcm2835.h"
+#include "bcm283x.h"
 #include "Sensors.h"
 
 #define GPIO_ULTRA_TRIG2 17

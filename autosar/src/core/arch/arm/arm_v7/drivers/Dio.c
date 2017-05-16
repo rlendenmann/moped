@@ -17,7 +17,7 @@
 #include "Dio.h"
 #include "Det.h"
 #include <string.h>
-#include "bcm2835_Types.h"
+#include "bcm283x_Types.h"
 #include "Uart.h"
 
 gpio_port_t IOPORT0;
@@ -128,8 +128,6 @@ Dio_LevelType Dio_ReadChannel(Dio_ChannelType channelId)
 void Dio_WriteChannel(Dio_ChannelType channelId, Dio_LevelType level)
 {
 	char* s = NULL;
-
-	Uart_Init();
 
 	VALIDATE_CHANNEL(channelId, DIO_WRITECHANNEL_ID);
 

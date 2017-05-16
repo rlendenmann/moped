@@ -1,9 +1,9 @@
 #! /bin/bash
 
-CODEBENCH=/home/arndt/moped/arm/Sourcery_CodeBench_Lite_for_ARM_EABI
-#CODEBENCH=/home/arndt/moped/gccarm/gcc-arm-none-eabi-6-2017-q1-update
+#CODEBENCH=/home/arndt/moped/arm/Sourcery_CodeBench_Lite_for_ARM_EABI
+CODEBENCH=/opt/gcc-arm-none-eabi-6-2017-q2/
 
-export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
 export PATH=$CODEBENCH/bin:$PATH
 # from autosar/d.sh jvmenv
 export LD_LIBRARY_PATH=$JAVA_HOME/jre/lib/amd64/server:$JAVA_HOME/jre/lib/amd64:$LD_LIBRARY_PATH
@@ -22,15 +22,15 @@ cd autosar
 # CAN card frequency and type of RPi 1 are really independent, but we choose
 # to put the new cards (frequency 16 Mhz) on the RPi 1B+ and the old
 # cards on the RPi 1B, and then we can associate the type of RPi with the
-# frequency.
+# frequency. v6, 20 removed
 
 for ecu in SCU VCU; do
 
-    for arch in v6 v7; do
+    for arch in v7; do
 
 	sed -i "s/^ARCH=arm_v.*/ARCH=arm_$arch/" src/core/boards/Raspberry_Pi/build_config.mk
 
-	for freq in 16 20; do
+	for freq in 16; do
 
 	    export BDIR=../examples/Raspberry_Pi/demo_$ecu
 	    export CANFREQ=$freq

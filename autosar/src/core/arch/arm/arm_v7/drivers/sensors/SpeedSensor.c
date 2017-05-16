@@ -13,7 +13,7 @@
  */
 #include <stdio.h>
 
-#include "bcm2835.h"
+#include "bcm283x.h"
 
 #include "isr.h"
 #include "irq_types.h"
@@ -33,56 +33,59 @@ uint64 pulse_t_n[2];
  * Each time a reflection signal is captured by the sensor, this interrupt
  * is activated and a counter (unique for each wheel pair) is increased.
  */
-void SpeedSensor_Isr(void) {
-  static int readc = 0;
+void SpeedSensor_Isr(void)
+{
+	static int readc = 0;
 
-  if (bcm2835_ReadGpioPin(&GPEDS0, 2)) {
-    readc++;
-    bcm2835_Sleep(100);
-    int yy = bcm2835_ReadGpioPin(&GPEDS0, 2);
-    int xx = bcm2835_ReadGpioPin(&GPLEV0, 2);
-    printf("%3d gpio 2 EDS = %d, LEV = %d\r\n",
-	   readc, yy, xx);
-    bcm2835_ClearEventDetectPin(2);
-  }
+	if (bcm2835_ReadGpioPin(GPEDS, 2)) {
+		readc++;
+		bcm2835_Sleep(100);
+		int yy = bcm2835_ReadGpioPin(GPEDS, 2);
+		int xx = bcm2835_ReadGpioPin(GPLEV, 2);
+		printf("%3d gpio 2 EDS = %d, LEV = %d\r\n",
+		   readc, yy, xx);
+		bcm2835_ClearEventDetectPin(2);
+	}
 
-  if (bcm2835_ReadGpioPin(&GPEDS0, GPIO_FRONT_SPEED)) {
-    pulse[FRONT_WHEEL]++;
-    pulse_total[FRONT_WHEEL]++;
+	if (bcm2835_ReadGpioPin(GPEDS, GPIO_FRONT_SPEED)) {
+		pulse[FRONT_WHEEL]++;
+		pulse_total[FRONT_WHEEL]++;
 
-    uint64 t = CURRENT_TIME;
-    int n = pulse_t_n[FRONT_WHEEL];
-    if (n < SAVED_PULSE_T) {
-      pulse_t[FRONT_WHEEL][n] = t;
-      pulse_t_n[FRONT_WHEEL] = n + 1;
-    } else {
-      for (int i = 1; i < SAVED_PULSE_T; i++) {
-	pulse_t[FRONT_WHEEL][i-1] = pulse_t[FRONT_WHEEL][i];
-      }
-      pulse_t[FRONT_WHEEL][n-1] = t;
-    }
-    bcm2835_ClearEventDetectPin(GPIO_FRONT_SPEED);
-  }
+		uint64 t = CURRENT_TIME;
+		int n = pulse_t_n[FRONT_WHEEL];
+		if (n < SAVED_PULSE_T) {
+			pulse_t[FRONT_WHEEL][n] = t;
+			pulse_t_n[FRONT_WHEEL] = n + 1;
+		} else {
+			for (int i = 1; i < SAVED_PULSE_T; i++) {
+				pulse_t[FRONT_WHEEL][i-1] = pulse_t[FRONT_WHEEL][i];
+			}
+			pulse_t[FRONT_WHEEL][n-1] = t;
+		}
 
-  if (bcm2835_ReadGpioPin(&GPEDS0, GPIO_REAR_SPEED)) {
-    pulse[REAR_WHEEL]++;
-    pulse_total[REAR_WHEEL]++;
+		bcm2835_ClearEventDetectPin(GPIO_FRONT_SPEED);
+	}
 
-    uint64 t = CURRENT_TIME;
-    int n = pulse_t_n[REAR_WHEEL];
-    if (n < SAVED_PULSE_T) {
-      pulse_t[REAR_WHEEL][n] = t;
-      pulse_t_n[REAR_WHEEL] = n + 1;
-    } else {
-      for (int i = 1; i < SAVED_PULSE_T; i++) {
-	pulse_t[REAR_WHEEL][i-1] = pulse_t[REAR_WHEEL][i];
-      }
-      pulse_t[REAR_WHEEL][n-1] = t;
-    }
+	if (bcm2835_ReadGpioPin(GPEDS, GPIO_REAR_SPEED)) {
+		uint64 t = CURRENT_TIME;
+		int n;
 
+		pulse[REAR_WHEEL]++;
+		pulse_total[REAR_WHEEL]++;
 
-    bcm2835_ClearEventDetectPin(GPIO_REAR_SPEED);
-  }
+		n = pulse_t_n[REAR_WHEEL];
+		if (n < SAVED_PULSE_T) {
+			pulse_t[REAR_WHEEL][n] = t;
+			pulse_t_n[REAR_WHEEL] = n + 1;
+		} else {
+			for (int i = 1; i < SAVED_PULSE_T; i++) {
+				pulse_t[REAR_WHEEL][i-1] = pulse_t[REAR_WHEEL][i];
+			}
+			pulse_t[REAR_WHEEL][n-1] = t;
+		}
+
+		bcm2835_ClearEventDetectPin(GPIO_REAR_SPEED);
+	}
 }
 
 /**
@@ -108,11 +111,13 @@ static uint8 SpeedSensor_IsValidWheel(enum Wheel wheel) {
  * to detect rising edges. Also, install an interrupt to count the
  * rising edges.
  */
-void SpeedSensor_Init(void){
+void SpeedSensor_Init(void)
+{
+	volatile struct bcm283x_irq_reg *irq = RPI_ARM_IRQ_BASE;
 
 	bcm2835_GpioFnSel(2, GPFN_IN);
-	bcm2835_SetReadWriteGpioReg(&GPFEN0, 2);
-	//bcm2835_SetReadWriteGpioReg(&GPREN0, 2);
+	bcm2835_SetReadWriteGpioReg(GPFEN, 2);
+	//bcm2835_SetReadWriteGpioReg(GPREN, 2);
 	bcm2835_ClearEventDetectPin(2);
 
 
@@ -121,9 +126,9 @@ void SpeedSensor_Init(void){
 	bcm2835_GpioFnSel(GPIO_FRONT_SPEED, GPFN_IN);
 	bcm2835_GpioFnSel(GPIO_REAR_SPEED, GPFN_IN);
 
-    /* Enable the pins to detect falling edge signals */
-	bcm2835_SetReadWriteGpioReg(&GPFEN0, GPIO_FRONT_SPEED);
-	bcm2835_SetReadWriteGpioReg(&GPFEN0, GPIO_REAR_SPEED);
+	/* Enable the pins to detect falling edge signals */
+	bcm2835_SetReadWriteGpioReg(GPFEN, GPIO_FRONT_SPEED);
+	bcm2835_SetReadWriteGpioReg(GPFEN, GPIO_REAR_SPEED);
 
 	/* Reset edge statuses (sometimes they have been seen to be non-zero at start-up) */
 	bcm2835_ClearEventDetectPin(GPIO_FRONT_SPEED);
@@ -132,10 +137,11 @@ void SpeedSensor_Init(void){
 	/* Install an interrupt to handle falling edge signals
 	 * Format: ISR_INSTALL(_name, _entryFunction, _irqVector, _priority, _appOwner)
 	 * (for more details on irqVector, see the interrupts table on p.113 in BCM2835-ARM-Peripherals.pdf) */
-    ISR_INSTALL_ISR2("GPIO0", bcm2835_GpioIsr, BCM2835_IRQ_ID_GPIO_0, 2, 0);
+	ISR_INSTALL_ISR2("GPIO0", bcm2835_GpioIsr, BCM2835_IRQ_ID_GPIO_0, 2, 0);
 
 	/* Enable the installed interrupt by setting the appropriate HW register */
-	bcm2835_SetReadWriteGpioReg(&IRQ_ENABLE1, BCM2835_IRQ_ID_GPIO_0);
+	bcm2835_SetReadWriteIoReg(&irq->IRQ_ENABLE[BCM2835_IRQ_ID_GPIO_0 / 32],
+				  BCM2835_IRQ_ID_GPIO_0 % 32);
 }
 
 /**

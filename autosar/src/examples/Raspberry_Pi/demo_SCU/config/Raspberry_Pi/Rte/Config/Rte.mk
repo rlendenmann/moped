@@ -8,3 +8,4 @@ obj-y += Rte_ImuSWC.o
 obj-y += Rte_IoHwAb.o
 obj-y += Rte_PirteSWC.o
 obj-y += Rte_UltraSWC.o
+obj-y += Ioc.o

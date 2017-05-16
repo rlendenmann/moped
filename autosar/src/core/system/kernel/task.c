@@ -293,7 +293,7 @@ OsTaskVarType *Os_TaskGetTop( void ){
 			} else {
 				assert(0);
 			}
-			}
+		}
 	}
 
 	assert(top_prio_pcb!=NULL);

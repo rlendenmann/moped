@@ -122,7 +122,15 @@ void Os_ArchSetTaskEntry(OsTaskVarType *pcbPtr );
 void Os_ArchPanic( uint32_t err, void *errFramePtr , void *excFramePtr);
 
 int Os_Test_And_Set(vuint8_t* lock, vuint8_t value);
+
 boolean Os_StartCore(CoreIDType id);
 
+CoreIDType Os_ArchCoreId(void);
+
+StatusType Os_ArchNotifyCore(CoreIDType coreId);
+
+void Os_ArchCoreNotificationInit(void);
+
+void *Os_ArchGetCurrentPC(void);
 
 #endif /*ARCH_H_*/

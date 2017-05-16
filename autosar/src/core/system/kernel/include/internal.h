@@ -77,7 +77,6 @@
 #define D_EVENT						(1<<4)
 #define D_MESSAGE					(1<<5)
 
-
 /*
  * Configuration tree:
  * USE_OS_DEBUG               - Turn on/off all Os_DbgPrintf()
@@ -202,10 +201,13 @@ extern uint32 os_dbg_mask;
  */
 
 #define ERRORHOOK(x) \
-	if( OS_SYS_PTR->hooks->ErrorHook != NULL  ) { \
-		OS_SYS_PTR->hooks->ErrorHook(x); \
-	} \
-	OS_APP_CALL_ERRORHOOKS(x);
+	do { \
+		os_error.pc = Os_ArchGetCurrentPC(); \
+		if (OS_SYS_PTR->hooks->ErrorHook != NULL  ) { \
+			OS_SYS_PTR->hooks->ErrorHook(x); \
+		} \
+		OS_APP_CALL_ERRORHOOKS(x); \
+	} while(0)
 
 
 

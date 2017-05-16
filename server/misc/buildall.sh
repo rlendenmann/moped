@@ -1,14 +1,14 @@
 #! /bin/bash
 
-CODEBENCH=/home/arndt/moped/arm/Sourcery_CodeBench_Lite_for_ARM_EABI
+#CODEBENCH=/home/arndt/moped/arm/Sourcery_CodeBench_Lite_for_ARM_EABI
 #CODEBENCH=/home/arndt/moped/arm/gcc-arm-none-eabi-4_9-2015q3
 #CODEBENCH=/home/arndt/moped/arm/gcc-arm-none-eabi-4_7-2014q2
-#CODEBENCH=/home/arndt/gccarm/gcc-arm-none-eabi-6-2017-q1-update
+CODEBENCH=/opt/gcc-arm-none-eabi-6-2017-q3/
 
-export JAVA_HOME=/usr/lib/jvm/java-7-openjdk-amd64
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-i386
 export PATH=$CODEBENCH/bin:$PATH
 # from autosar/d.sh jvmenv
-export LD_LIBRARY_PATH=$JAVA_HOME/jre/lib/amd64/server:$JAVA_HOME/jre/lib/amd64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$JAVA_HOME/jre/lib/i386/server:$JAVA_HOME/jre/lib/i386:$LD_LIBRARY_PATH
 
 export CROSS_COMPILE=$CODEBENCH/bin/arm-none-eabi-
 
@@ -16,7 +16,7 @@ set -e
 
 if true; then
 cd api
-mvn clean install
+mvn -e -X clean install
 cd ..
 
 cd ecm-core
@@ -35,9 +35,9 @@ cd server
 mvn clean install
 cd ..
 
-cd simulator
-mvn clean install
-cd ..
+#cd simulator
+#mvn clean install
+#cd ..
 
 cd squawk
 ./startScript.sh

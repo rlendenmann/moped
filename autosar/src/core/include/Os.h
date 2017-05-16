@@ -520,6 +520,10 @@ typedef struct OsError {
 	uint32_t param1;
 	uint32_t param2;
 	uint32_t param3;
+#if (OS_NUM_CORES > 1)
+	uint32_t coreId;
+#endif
+	void     *pc;
 } OsErrorType;
 
 extern OsErrorType os_error;
@@ -605,7 +609,7 @@ typedef int CoreIDType;
 CoreIDType GetCoreID(void);
 void StartCore(CoreIDType coreId, StatusType* status);
 
-#if !defined(CFG_MPC5516)
+#ifndef MULTI_CPU
 #define GetCoreID() 0
 #endif
 

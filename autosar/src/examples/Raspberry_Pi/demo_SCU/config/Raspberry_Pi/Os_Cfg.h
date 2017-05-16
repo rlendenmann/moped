@@ -12,6 +12,7 @@
 
 // Application Id's
 #define APPLICATION_ID_OsApplication 0u
+#define APPLICATION_ID_OsAppl1 1u
 
 
 // Alarm Id's
@@ -66,20 +67,22 @@
 
 
 // Task Id's
-#define TASK_ID_OsIdle ((TaskType)0)
+#define TASK_ID_OsIdle		((TaskType)0)
+#define TASK_ID_OsIdle_1	((TaskType)1)
 
 
 
-#define TASK_ID_CanFunctionTask	((TaskType)1)
-#define TASK_ID_RteTask	((TaskType)2)
-#define TASK_ID_SensorTask	((TaskType)3)
-#define TASK_ID_SquawkTask	((TaskType)4)
-#define TASK_ID_StartupTask	((TaskType)5)
+#define TASK_ID_CanFunctionTask	((TaskType)2)
+#define TASK_ID_RteTask		((TaskType)3)
+#define TASK_ID_SensorTask	((TaskType)4)
+#define TASK_ID_SquawkTask	((TaskType)5)
+#define TASK_ID_StartupTask	((TaskType)6)
 
 
 // Task entry points
 
 void OsIdle( void );
+void OsIdle_1(void);
 
 
 
@@ -104,7 +107,7 @@ void StartupTask ( void );
 #define OS_OSIDLE_STACK_SIZE 512u 
 
 #define OS_ALARM_CNT			3u 
-#define OS_TASK_CNT				6u
+#define OS_TASK_CNT			7u
 #define OS_SCHTBL_CNT			0u
 #define OS_COUNTER_CNT			1u
 #define OS_EVENTS_CNT			8u
@@ -112,7 +115,7 @@ void StartupTask ( void );
 #define OS_RESOURCE_CNT			0u
 #define OS_LINKED_RESOURCE_CNT	0u
 
-#define OS_APPLICATION_CNT		1u
+#define OS_APPLICATION_CNT		2u
 
 #define OS_SPINLOCK_CNT			2
 
@@ -144,10 +147,10 @@ void StartupTask ( void );
 
 #define OS_ISR_MAX_CNT		10u
 
-#define OS_NUM_CORES		1u
+#define OS_NUM_CORES		2u
 
 #define OS_CORE_0_MAIN_APPLICATION	APPLICATION_ID_OsApplication
- 
+#define OS_CORE_1_MAIN_APPLICATION	APPLICATION_ID_OsAppl1
 
 #endif /*OS_CFG_H_*/
 

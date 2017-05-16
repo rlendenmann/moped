@@ -12,7 +12,7 @@
 #include "arc.h"
 #include "EcuM.h"
 
-#include "bcm2835.h"
+#include "bcm283x.h"
 #include "Uart.h"
 #include "MOPED_DEBUG.h"
 
@@ -27,19 +27,20 @@ extern boolean ComWrite;
 extern int runSquawk(void);
 
 void SquawkTask(void){
-	pi_printf("Squawk task\r\n");
+	pi_printf("Squawk task\n");
 #if RUN_SQUAWK
 	runSquawk();
 #endif
 	TerminateTask();
 }
 
-void StartupTask( void ) {
-  pi_printf("infor: start up\r\n");
+void StartupTask( void )
+{
+	pi_printf("info: start up (SCU)\n");
 
-    bcm2835_read_mac_address();
+	bcm2835_read_mac_address();
 
-    EcuM_StartupTwo();
+	EcuM_StartupTwo();
 
 	// Startup CanIf due to ComM is missing in this example
 	CanIf_SetControllerMode(CANIF_CanIfCtrlCfg, CANIF_CS_STARTED);
@@ -55,12 +56,12 @@ void StartupTask( void ) {
 	Com_IpduGroupControl(groupVector, TRUE);
 
 	TerminateTask();
-
 }
 
-void CanFunctionTask(void) {
+void CanFunctionTask(void)
+{
 
-    printf("CanFunctionTask\r\n");
+	pi_printf("CanFunctionTask SCU\n");
 
 	for(;;){
 
@@ -78,6 +79,12 @@ void CanFunctionTask(void) {
 	}
 }
 
-void OsIdle( void ) {
+void OsIdle( void )
+{
+	for(;;) {}
+}
+
+void OsIdle_1( void )
+{
 	for(;;) {}
 }
